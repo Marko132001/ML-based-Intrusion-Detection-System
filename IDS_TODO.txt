@@ -1,0 +1,13 @@
+//Provjeri duplikate u datasetu --> duple uzorke --> nema duplikata
+//Kontradiktorne duplikate --> isti uzorak na jednom mjestu je 0, a na jednom 1 --> nema kontradiktornih duplikata
+//Zadnji broj IP adrese selektirat 192.168.100.{1} --> izdvojiti kao feature --> (Pravilan način - ako se radi LabelEncoding za odredišnu i izvorišnu adresu dobit će se različite vrijednosti po stupcima za istu adresu)
+//L7_protocol odrezat na integer --> radi 5.212 --> provjeriti utjecaj na rezultate --> nema utjecaja na rezultate
+//Cross validation --> 10 fold napravit --> opisat
+//Opisati 12 featura - ne u detalje -- kako su dobiveni, otkud, s kojim alatom...
+//Dodaj i objasni geometric_mean mjeru
+
+//P.S. --> efikasnost zamjenit performansama ili uspješnost (kao termin u overleafu)
+
+ROC krivulja --> AUC --> s kojim thresholdom se mogu dobiti bolje klasifikacije (sve iznad 0.5 je bolje, inače 50-50 guess)
+Isprobat više algoritama
+Crtanje grafova --> tehnika box and wiscker plot
