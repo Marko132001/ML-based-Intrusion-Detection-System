@@ -2,6 +2,7 @@ from warnings import simplefilter
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import sklearn
 from numpy import genfromtxt
 from numpy.lib.recfunctions import append_fields
@@ -13,7 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
-                             precision_score, recall_score)
+                             precision_score, recall_score, roc_auc_score, roc_curve)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import cross_validate
@@ -51,8 +52,13 @@ def print_stats_metrics(y_test, y_pred):
     print('Recall: %.3f' % recall_score(y_true=y_test, y_pred=y_pred,))
     print('F1-measure: %.3f' % f1_score(y_true=y_test, y_pred=y_pred))
     print('Geometric mean: %.3f' % g_mean)
+    print('AUC score: %.3f' % roc_auc_score(y_test, y_pred))
 
-
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    plt.plot(fpr, tpr)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.show()
 
 def cross_validation(model, _X, _y, _cv=5):
 
