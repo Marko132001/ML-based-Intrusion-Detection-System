@@ -8,6 +8,6 @@
 
 //P.S. --> efikasnost zamjenit performansama ili uspješnost (kao termin u overleafu)
 
-ROC krivulja --> AUC --> s kojim thresholdom se mogu dobiti bolje klasifikacije (sve iznad 0.5 je bolje, inače 50-50 guess)
-Isprobat više algoritama
+//ROC krivulja --> AUC --> s kojim thresholdom se mogu dobiti bolje klasifikacije (sve iznad 0.5 je bolje, inače 50-50 guess)
+//Isprobat više algoritama
 Crtanje grafova --> tehnika box and wiscker plot
