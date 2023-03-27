@@ -11,3 +11,6 @@
 //ROC krivulja --> AUC --> s kojim thresholdom se mogu dobiti bolje klasifikacije (sve iznad 0.5 je bolje, inače 50-50 guess)
 //Isprobat više algoritama
 Crtanje grafova --> tehnika box and wiscker plot
+Stratified sampling - crossvalidation - ujednačena podjela uzoraka
+najoptimalniji - optimalno
+špičasta krivulja - plotat distribuciju vjerojatnosti testnog dataseta - na toj distribuciji se postavlja threshold
