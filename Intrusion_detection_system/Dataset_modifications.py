@@ -22,15 +22,19 @@ from sklearn.model_selection import cross_validate
 simplefilter(action='ignore', category=FutureWarning)
 np.set_printoptions(threshold=np.inf)
 
-feature = genfromtxt('NF-BoT-IoT.csv', delimiter=',', usecols=(i for i in range(4, 12)), dtype=float, skip_header=1, encoding="utf-8")
+plt.rcParams.update({'figure.figsize':(7,5), 'figure.dpi':100})
 
-target = genfromtxt('NF-BoT-IoT.csv', delimiter=',', usecols=(-2), dtype=int, skip_header=1)
+df = pd.read_csv('NF-BoT-IoT.csv', header=0, dtype=float, usecols=range(4, 12))
+dt = pd.read_csv('NF-BoT-IoT.csv', header=0, dtype=int, usecols=[12])
 
+plt.figure()
+plt.boxplot([df['IN_PKTS'],df['OUT_PKTS']], notch=True,patch_artist=True)
+plt.show()
 
 ####Scale feature matrix######
-feature_std = StandardScaler().fit_transform(feature)
+feature_std = StandardScaler().fit_transform(df.values)
 
-labels = LabelEncoder().fit_transform(target)
+labels = LabelEncoder().fit_transform(dt.values)
 
 
 x_train, x_test, y_train, y_test = train_test_split(feature_std, labels, test_size=0.34, random_state=42, shuffle=True)
@@ -55,6 +59,7 @@ def print_stats_metrics(y_test, y_pred):
     print('AUC score: %.3f' % roc_auc_score(y_test, y_pred))
 
     fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    plt.figure()
     plt.title('Receiver Operating Characteristic')
     plt.plot(fpr, tpr, 'b', label = 'AUC = %0.3f' % auc(fpr, tpr))
     plt.legend(loc = 'lower right')
@@ -71,6 +76,11 @@ def cross_validation(model, _X, _y, _cv=5):
                             y=_y,
                             cv=_cv,
                             scoring=_scoring)
+    
+    plt.figure()
+    box_plot_data=[results['test_accuracy'],results['test_precision'],results['test_recall'],results['test_f1'],results['test_roc_auc']]
+    plt.boxplot(box_plot_data,notch=True,patch_artist=True,labels=['accuracy','precision','recall','f1-score','roc-auc'])
+    plt.show()
 
     print("Accuracy:", results['test_accuracy'])
     print("Precision:", results['test_precision'])

@@ -12,5 +12,5 @@
 //Isprobat više algoritama
 Crtanje grafova --> tehnika box and wiscker plot
 Stratified sampling - crossvalidation - ujednačena podjela uzoraka
-najoptimalniji - optimalno
+//najoptimalniji - optimalno
 špičasta krivulja - plotat distribuciju vjerojatnosti testnog dataseta - na toj distribuciji se postavlja threshold
