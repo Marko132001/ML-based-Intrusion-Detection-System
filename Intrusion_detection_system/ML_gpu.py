@@ -1,29 +1,61 @@
 from warnings import simplefilter
 
 import cudf
+import cuml
 import cupy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import (f1_score, roc_curve, auc, precision_score, 
+                             recall_score, accuracy_score, confusion_matrix, roc_auc_score)
+from sklearn.model_selection import StratifiedKFold, KFold
 from cuml.preprocessing import LabelEncoder, StandardScaler
 from cuml.model_selection import train_test_split
 from cuml.naive_bayes import GaussianNB
 from cuml.ensemble import RandomForestClassifier
 from cuml.neighbors import KNeighborsClassifier
-from cuml.metrics import roc_auc_score, accuracy_score
 
 simplefilter(action='ignore', category=FutureWarning)
 np.set_printoptions(threshold=np.inf)
 
+cuml.set_global_output_type('cupy')
 
 
 df = cudf.read_csv('NF-BoT-IoT.csv', header=0, dtype=cupy.float32, usecols=range(4, 12))
 dt = cudf.read_csv('NF-BoT-IoT.csv', header=0, dtype=cupy.int32, usecols=[12])
 
-feature_std = StandardScaler().fit_transform(df.values)
+feature_std = StandardScaler().fit_transform(df)
 labels = LabelEncoder().fit_transform(dt.values)
 
 x_train, x_test, y_train, y_test = train_test_split(feature_std, labels, test_size=0.34, random_state=42, shuffle=True)
+
+
+def print_stats_metrics(y_test, y_pred, y_pred_prob):    
+    print('Accuracy: %.2f' % accuracy_score(y_test,y_pred) )
+    confmat = confusion_matrix(y_true=y_test, y_pred=y_pred)
+    tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=y_pred).ravel()
+    tp_rate = tp/(tp+fn)
+    tn_rate = tn/(tn+fp) 
+    g_mean = np.sqrt(tp_rate*tn_rate)
+    print ("confusion matrix")
+    print(confmat)
+    print (pd.crosstab(y_test, y_pred, rownames=['True'], colnames=['Predicted'], margins=True))
+    print('Precision: %.3f' % precision_score(y_true=y_test, y_pred=y_pred,average='binary'))
+    print('Recall: %.3f' % recall_score(y_true=y_test, y_pred=y_pred,))
+    print('F1-measure: %.3f' % f1_score(y_true=y_test, y_pred=y_pred))
+    print('Geometric mean: %.3f' % g_mean)
+    print('AUC score: %.3f' % roc_auc_score(y_test, y_pred_prob))
+
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+    plt.figure()
+    plt.title('Receiver Operating Characteristic')
+    plt.plot(fpr, tpr, 'b', label = 'AUC = %0.3f' % auc(fpr, tpr))
+    plt.legend(loc = 'lower right')
+    plt.plot([0, 1], [0, 1],'r--')
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    plt.show()
+
 
 
 algorithm = int(input("Choose algorithm:\n1-Naive Bayes\n2-Random Forest\n3-KNN\nEnter number: "))
@@ -35,7 +67,7 @@ if(algorithm == 1):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Naive Bayes#######################")
-
+    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 elif(algorithm == 2):
     #######################Random Forest#######################
     clf = RandomForestClassifier()
@@ -43,9 +75,7 @@ elif(algorithm == 2):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Random Forest#######################")
-    cu_score = accuracy_score( y_test, predictions )
-    print( " cuml accuracy: ", cu_score )
-
+    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 elif(algorithm == 3):
     ####################### KNN #######################
     clf = KNeighborsClassifier()
@@ -53,5 +83,105 @@ elif(algorithm == 3):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("####################### KNN #######################")
-    cu_score = accuracy_score( y_test, predictions )
-    print( " cuml accuracy: ", cu_score )
+    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+
+
+
+
+crossValidation = input("Run 10-k Fold?\nY/N: ")
+
+if(crossValidation == 'Y'):
+    stratKFold = input("Run stratisfied KFold?\nY/N: ")
+    metric = int(input("Select metric:\n1-Accuracy\n2-Precision\n3-Recall\n4-F1 score\n5-ROC-AUC score\n6-Geometric mean\nEnter number: "))
+
+    naive_bayes = []
+    random_forest = []
+    knn = []
+    
+    
+    if(stratKFold == 'N'):
+        kf = KFold(n_splits=10, random_state=1, shuffle=True)
+    elif(stratKFold == 'Y'):
+        kf = StratifiedKFold(n_splits=10, random_state=1, shuffle=True)
+
+    for train_index, test_index in kf.split(df.values.get(), dt.values.get()):
+        X_train = feature_std[train_index]
+        y_train = labels[train_index]
+        y_train = y_train.values
+        X_test = feature_std[test_index]
+        y_test = labels[test_index]
+        y_test = y_test.values.get()
+
+        print(type(X_train))
+        print(type(y_train))
+
+        clfNB = GaussianNB()
+        clfRF = RandomForestClassifier()
+        clfKNN = KNeighborsClassifier()
+        
+        clfNB.fit(X_train,y_train)
+        predictNB_prob = clfNB.predict_proba(X_test)[:, 1].get()
+        predictNB = clfNB.predict(X_test).get()
+        
+        clfRF.fit(X_train, y_train)
+        predictRF_prob = clfRF.predict_proba(X_test)[:, 1].get()
+        predictRF = clfRF.predict(X_test).get()
+
+        clfKNN.fit(X_train, y_train)
+        predictKNN_prob = clfKNN.predict_proba(X_test)[:, 1].get()
+        predictKNN = clfKNN.predict(X_test).get()
+
+        match metric:
+            case 1:
+                naive_bayes.append(accuracy_score(y_test, predictNB))
+                random_forest.append(accuracy_score(y_test, predictRF))
+                knn.append(accuracy_score(y_test, predictKNN))
+                metricStr = "Accuracy"
+            case 2:
+                naive_bayes.append(precision_score(y_true=y_test, y_pred=predictNB, average='binary'))
+                random_forest.append(precision_score(y_true=y_test, y_pred=predictRF, average='binary'))
+                knn.append(precision_score(y_true=y_test, y_pred=predictKNN, average='binary'))
+                metricStr = "Precision"
+            case 3:
+                naive_bayes.append(recall_score(y_true=y_test, y_pred=predictNB))
+                random_forest.append(recall_score(y_true=y_test, y_pred=predictRF))
+                knn.append(recall_score(y_true=y_test, y_pred=predictKNN))
+                metricStr = "Recall"
+            case 4:
+                naive_bayes.append(f1_score(y_true=y_test, y_pred=predictNB))
+                random_forest.append(f1_score(y_true=y_test, y_pred=predictRF))
+                knn.append(f1_score(y_true=y_test, y_pred=predictKNN))
+                metricStr = "F1 measure"
+            case 5:
+                naive_bayes.append(roc_auc_score(y_test, predictNB_prob))
+                random_forest.append(roc_auc_score(y_test, predictRF_prob))
+                knn.append(roc_auc_score(y_test, predictKNN_prob))
+                metricStr = "ROC-AUC"
+            case 6:
+                tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=predictNB).ravel()
+                tp_rate = tp/(tp+fn)
+                tn_rate = tn/(tn+fp) 
+                g_mean = np.sqrt(tp_rate*tn_rate)
+                naive_bayes.append(g_mean)
+
+                tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=predictRF).ravel()
+                tp_rate = tp/(tp+fn)
+                tn_rate = tn/(tn+fp) 
+                g_mean = np.sqrt(tp_rate*tn_rate)
+                random_forest.append(g_mean)
+
+                tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=predictKNN).ravel()
+                tp_rate = tp/(tp+fn)
+                tn_rate = tn/(tn+fp) 
+                g_mean = np.sqrt(tp_rate*tn_rate)
+                knn.append(g_mean)
+                metricStr = "Geometric mean"
+        
+
+    plt.figure()
+    box_plot_data=[naive_bayes, random_forest, knn]
+    plt.boxplot(box_plot_data,patch_artist=True,labels=['Naive Bayes', 'Random Forest', 'KNN'])
+    plt.ylim(0, 1)
+    plt.ylabel(metricStr)
+    plt.xlabel("Klasifikatori")
+    plt.show()
