@@ -21,8 +21,8 @@ np.set_printoptions(threshold=np.inf)
 cuml.set_global_output_type('cupy')
 
 
-df = cudf.read_csv('NF-BoT-IoT.csv', header=0, dtype=cupy.float32, usecols=range(4, 12))
-dt = cudf.read_csv('NF-BoT-IoT.csv', header=0, dtype=cupy.int32, usecols=[12])
+df = cudf.read_csv('./datasets/NF-BoT-IoT.csv', header=0, dtype=cupy.float32, usecols=range(4, 12))
+dt = cudf.read_csv('./datasets/NF-BoT-IoT.csv', header=0, dtype=cupy.int32, usecols=[12])
 
 feature_std = StandardScaler().fit_transform(df)
 labels = LabelEncoder().fit_transform(dt.values)
