@@ -58,7 +58,7 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
 
 
 
-algorithm = int(input("Choose algorithm:\n1-Naive Bayes\n2-Random Forest\n3-KNN\nEnter number: "))
+algorithm = int(input("Choose algorithm:\n1-Naive Bayes\n2-Random Forest\n3-KNN\n4-Decision Tree\nEnter number: "))
 
 if(algorithm == 1):
     #######################Naive Bayes#######################
@@ -84,6 +84,14 @@ elif(algorithm == 3):
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("####################### KNN #######################")
     print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+elif(algorithm == 4):
+    #######################Decision Tree#######################
+    clf = RandomForestClassifier(n_estimators=1)
+    clf.fit(x_train,y_train)
+    predictions = clf.predict(x_test)
+    pred_prob = clf.predict_proba(x_test)[:, 1]
+    print("#######################Random Forest#######################")
+    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 
 
 
@@ -97,7 +105,7 @@ if(crossValidation == 'Y'):
     naive_bayes = []
     random_forest = []
     knn = []
-    
+    decision_tree = []
     
     if(stratKFold == 'N'):
         kf = KFold(n_splits=10, random_state=1, shuffle=True)
@@ -112,12 +120,10 @@ if(crossValidation == 'Y'):
         y_test = labels[test_index]
         y_test = y_test.values.get()
 
-        print(type(X_train))
-        print(type(y_train))
-
         clfNB = GaussianNB()
         clfRF = RandomForestClassifier()
         clfKNN = KNeighborsClassifier()
+        clfDT = RandomForestClassifier(n_estimators=1)
         
         clfNB.fit(X_train,y_train)
         predictNB_prob = clfNB.predict_proba(X_test)[:, 1].get()
@@ -131,31 +137,40 @@ if(crossValidation == 'Y'):
         predictKNN_prob = clfKNN.predict_proba(X_test)[:, 1].get()
         predictKNN = clfKNN.predict(X_test).get()
 
+        clfDT.fit(X_train, y_train)
+        predictDT_prob = clfDT.predict_proba(X_test)[:, 1].get()
+        predictDT = clfDT.predict(X_test).get()
+
         match metric:
             case 1:
                 naive_bayes.append(accuracy_score(y_test, predictNB))
                 random_forest.append(accuracy_score(y_test, predictRF))
                 knn.append(accuracy_score(y_test, predictKNN))
+                decision_tree.append(accuracy_score(y_test, predictDT))
                 metricStr = "Accuracy"
             case 2:
                 naive_bayes.append(precision_score(y_true=y_test, y_pred=predictNB, average='binary'))
                 random_forest.append(precision_score(y_true=y_test, y_pred=predictRF, average='binary'))
                 knn.append(precision_score(y_true=y_test, y_pred=predictKNN, average='binary'))
+                decision_tree.append(precision_score(y_true=y_test, y_pred=predictDT, average='binary'))
                 metricStr = "Precision"
             case 3:
                 naive_bayes.append(recall_score(y_true=y_test, y_pred=predictNB))
                 random_forest.append(recall_score(y_true=y_test, y_pred=predictRF))
                 knn.append(recall_score(y_true=y_test, y_pred=predictKNN))
+                decision_tree.append(recall_score(y_true=y_test, y_pred=predictDT))
                 metricStr = "Recall"
             case 4:
                 naive_bayes.append(f1_score(y_true=y_test, y_pred=predictNB))
                 random_forest.append(f1_score(y_true=y_test, y_pred=predictRF))
                 knn.append(f1_score(y_true=y_test, y_pred=predictKNN))
+                decision_tree.append(f1_score(y_true=y_test, y_pred=predictDT))
                 metricStr = "F1 measure"
             case 5:
                 naive_bayes.append(roc_auc_score(y_test, predictNB_prob))
                 random_forest.append(roc_auc_score(y_test, predictRF_prob))
                 knn.append(roc_auc_score(y_test, predictKNN_prob))
+                decision_tree.append(roc_auc_score(y_test, predictDT_prob))
                 metricStr = "ROC-AUC"
             case 6:
                 tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=predictNB).ravel()
@@ -175,12 +190,17 @@ if(crossValidation == 'Y'):
                 tn_rate = tn/(tn+fp) 
                 g_mean = np.sqrt(tp_rate*tn_rate)
                 knn.append(g_mean)
+
+                tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=predictDT).ravel()
+                tp_rate = tp/(tp+fn)
+                tn_rate = tn/(tn+fp) 
+                g_mean = np.sqrt(tp_rate*tn_rate)
+                decision_tree.append(g_mean)
                 metricStr = "Geometric mean"
         
-
     plt.figure()
-    box_plot_data=[naive_bayes, random_forest, knn]
-    plt.boxplot(box_plot_data,patch_artist=True,labels=['Naive Bayes', 'Random Forest', 'KNN'])
+    box_plot_data=[naive_bayes, random_forest, knn, decision_tree]
+    plt.boxplot(box_plot_data,patch_artist=True,labels=['Naive Bayes', 'Random Forest', 'KNN', 'Decision Tree'])
     plt.ylim(0, 1)
     plt.ylabel(metricStr)
     plt.xlabel("Klasifikatori")
