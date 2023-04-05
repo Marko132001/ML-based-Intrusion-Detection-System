@@ -14,6 +14,7 @@ from cuml.model_selection import train_test_split
 from cuml.naive_bayes import GaussianNB
 from cuml.ensemble import RandomForestClassifier
 from cuml.neighbors import KNeighborsClassifier
+import bctools as bc
 
 simplefilter(action='ignore', category=FutureWarning)
 np.set_printoptions(threshold=np.inf)
@@ -56,9 +57,18 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
     plt.xlabel('False Positive Rate')
     plt.show()
 
+    gmeans_improved = np.sqrt(tpr * (1 - fpr))
+    index = np.argmax(gmeans_improved)
+    print('Best Threshold=%f, G-Mean=%.3f' % (thresholds[index], gmeans_improved[index]))
+
+    return thresholds[index]
+
+
 
 
 algorithm = int(input("Choose algorithm:\n1-Naive Bayes\n2-Random Forest\n3-KNN\n4-Decision Tree\nEnter number: "))
+
+
 
 if(algorithm == 1):
     #######################Naive Bayes#######################
@@ -67,7 +77,7 @@ if(algorithm == 1):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Naive Bayes#######################")
-    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 elif(algorithm == 2):
     #######################Random Forest#######################
     clf = RandomForestClassifier()
@@ -75,7 +85,7 @@ elif(algorithm == 2):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Random Forest#######################")
-    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 elif(algorithm == 3):
     ####################### KNN #######################
     clf = KNeighborsClassifier()
@@ -83,7 +93,7 @@ elif(algorithm == 3):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("####################### KNN #######################")
-    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 elif(algorithm == 4):
     #######################Decision Tree#######################
     clf = RandomForestClassifier(n_estimators=1)
@@ -91,10 +101,17 @@ elif(algorithm == 4):
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Random Forest#######################")
-    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 
+desired_predict = []
+for val in pred_prob:
+    if(val < new_threshold):
+        desired_predict.append(0)
+    else:
+        desired_predict.append(1)
 
-
+print("############Ideal threshold results##############")
+print_stats_metrics(y_test.get(), desired_predict, pred_prob.get())
 
 crossValidation = input("Run 10-k Fold?\nY/N: ")
 
