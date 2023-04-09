@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import (f1_score, roc_curve, auc, precision_score, 
-                             recall_score, accuracy_score, confusion_matrix, roc_auc_score)
+                             recall_score, accuracy_score, confusion_matrix, roc_auc_score, precision_recall_curve)
 from sklearn.model_selection import StratifiedKFold, KFold
 from cuml.preprocessing import LabelEncoder, StandardScaler
 from cuml.model_selection import train_test_split
@@ -48,6 +48,7 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
     print('AUC score: %.3f' % roc_auc_score(y_test, y_pred_prob))
 
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+    """
     plt.figure()
     plt.title('Receiver Operating Characteristic')
     plt.plot(fpr, tpr, 'b', label = 'AUC = %0.3f' % auc(fpr, tpr))
@@ -56,10 +57,16 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
     plt.show()
-
+    """
     gmeans_improved = np.sqrt(tpr * (1 - fpr))
     index = np.argmax(gmeans_improved)
     print('Best Threshold=%f, G-Mean=%.3f' % (thresholds[index], gmeans_improved[index]))
+
+    precision, recall, thresholds_f1 = precision_recall_curve(y_test, y_pred_prob)
+
+    fscore = (2 * precision * recall) / (precision + recall)
+    ix = np.argmax(fscore)
+    print('Best Threshold=%f, F-Score=%.3f' % (thresholds_f1[ix], fscore[ix]))
 
     return thresholds[index]
 
@@ -100,7 +107,7 @@ elif(algorithm == 4):
     clf.fit(x_train,y_train)
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
-    print("#######################Random Forest#######################")
+    print("#######################Decision Tree#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 
 desired_predict = []
