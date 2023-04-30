@@ -73,56 +73,59 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
 
 
 
-algorithm = int(input("Choose algorithm:\n1-Naive Bayes\n2-Random Forest\n3-KNN\n4-Decision Tree\nEnter number: "))
+def KFoldCompareMetrics(algName):
+
+    accuracy = []
+    precision = []
+    recall = []
+    f1_measure = []
+
+    stratKFold = input("Run stratisfied KFold?\nY/N: ")
+
+    if(stratKFold == 'N'):
+        kf = KFold(n_splits=10, random_state=42, shuffle=True)
+    elif(stratKFold == 'Y'):
+        kf = StratifiedKFold(n_splits=10, random_state=42, shuffle=True)
 
 
+    for train_index, test_index in kf.split(df.values.get(), dt.values.get()):
+        X_train = feature_std[train_index]
+        y_train = labels[train_index]
+        y_train = y_train.values
+        X_test = feature_std[test_index]
+        y_test = labels[test_index]
+        y_test = y_test.values.get()
 
-if(algorithm == 1):
-    #######################Naive Bayes#######################
-    clf = GaussianNB()
-    clf.fit(x_train,y_train)
-    predictions = clf.predict(x_test)
-    pred_prob = clf.predict_proba(x_test)[:, 1]
-    print("#######################Naive Bayes#######################")
-    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-elif(algorithm == 2):
-    #######################Random Forest#######################
-    clf = RandomForestClassifier()
-    clf.fit(x_train,y_train)
-    predictions = clf.predict(x_test)
-    pred_prob = clf.predict_proba(x_test)[:, 1]
-    print("#######################Random Forest#######################")
-    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-elif(algorithm == 3):
-    ####################### KNN #######################
-    clf = KNeighborsClassifier()
-    clf.fit(x_train, y_train)
-    predictions = clf.predict(x_test)
-    pred_prob = clf.predict_proba(x_test)[:, 1]
-    print("####################### KNN #######################")
-    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-elif(algorithm == 4):
-    #######################Decision Tree#######################
-    clf = RandomForestClassifier(n_estimators=1)
-    clf.fit(x_train,y_train)
-    predictions = clf.predict(x_test)
-    pred_prob = clf.predict_proba(x_test)[:, 1]
-    print("#######################Decision Tree#######################")
-    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
 
-desired_predict = []
-for val in pred_prob:
-    if(val < new_threshold):
-        desired_predict.append(0)
-    else:
-        desired_predict.append(1)
+        if(algName == "Naive Bayes"):
+            clf = GaussianNB()
+        elif(algName == "KNN"):
+            clf = KNeighborsClassifier()
+        elif(algName == "Random Forest"):
+            clf = RandomForestClassifier()
+        elif(algName == "Decision Tree"):
+            clf = RandomForestClassifier(n_estimators=1)
 
-print("############Ideal threshold results##############")
-print_stats_metrics(y_test.get(), desired_predict, pred_prob.get())
+        clf.fit(X_train,y_train)
+        #predict_prob = clf.predict_proba(X_test)[:, 1].get()
+        predict = clf.predict(X_test).get()
 
-crossValidation = input("Run 10-k Fold?\nY/N: ")
+        accuracy.append(accuracy_score(y_test, predict))
+        precision.append(precision_score(y_true=y_test, y_pred=predict, average='binary'))
+        recall.append(recall_score(y_true=y_test, y_pred=predict))
+        f1_measure.append(f1_score(y_true=y_test, y_pred=predict))
 
-if(crossValidation == 'Y'):
+    plt.figure()
+    box_plot_data=[accuracy, precision, recall, f1_measure]
+    plt.boxplot(box_plot_data,patch_artist=True,labels=['Accuracy', 'Precision', 'Recall', 'F1 Measure'])
+    plt.ylim(0, 1)
+    plt.ylabel(algName)
+    plt.xlabel("Klasifikacijske metrike")
+    plt.show()
+
+
+def KFoldCompareAlgorithms():
+
     stratKFold = input("Run stratisfied KFold?\nY/N: ")
     metric = int(input("Select metric:\n1-Accuracy\n2-Precision\n3-Recall\n4-F1 score\n5-ROC-AUC score\n6-Geometric mean\nEnter number: "))
 
@@ -132,9 +135,9 @@ if(crossValidation == 'Y'):
     decision_tree = []
     
     if(stratKFold == 'N'):
-        kf = KFold(n_splits=10, random_state=1, shuffle=True)
+        kf = KFold(n_splits=10, random_state=42, shuffle=True)
     elif(stratKFold == 'Y'):
-        kf = StratifiedKFold(n_splits=10, random_state=1, shuffle=True)
+        kf = StratifiedKFold(n_splits=10, random_state=42, shuffle=True)
 
     for train_index, test_index in kf.split(df.values.get(), dt.values.get()):
         X_train = feature_std[train_index]
@@ -229,3 +232,63 @@ if(crossValidation == 'Y'):
     plt.ylabel(metricStr)
     plt.xlabel("Klasifikatori")
     plt.show()
+
+
+
+
+
+
+
+algorithm = int(input("Choose algorithm:\n1-Naive Bayes\n2-Random Forest\n3-KNN\n4-Decision Tree\nEnter number: "))
+
+
+
+if(algorithm == 1):
+    #######################Naive Bayes#######################
+    clf = GaussianNB()
+    clf.fit(x_train,y_train)
+    predictions = clf.predict(x_test)
+    pred_prob = clf.predict_proba(x_test)[:, 1]
+    print("#######################Naive Bayes#######################")
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    KFoldCompareMetrics("Naive Bayes")
+elif(algorithm == 2):
+    #######################Random Forest#######################
+    clf = RandomForestClassifier()
+    clf.fit(x_train,y_train)
+    predictions = clf.predict(x_test)
+    pred_prob = clf.predict_proba(x_test)[:, 1]
+    print("#######################Random Forest#######################")
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    KFoldCompareMetrics("Random Forest")
+elif(algorithm == 3):
+    ####################### KNN #######################
+    clf = KNeighborsClassifier()
+    clf.fit(x_train, y_train)
+    predictions = clf.predict(x_test)
+    pred_prob = clf.predict_proba(x_test)[:, 1]
+    print("####################### KNN #######################")
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    KFoldCompareMetrics("KNN")
+elif(algorithm == 4):
+    #######################Decision Tree#######################
+    clf = RandomForestClassifier(n_estimators=1)
+    clf.fit(x_train,y_train)
+    predictions = clf.predict(x_test)
+    pred_prob = clf.predict_proba(x_test)[:, 1]
+    print("#######################Decision Tree#######################")
+    new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+    KFoldCompareMetrics("Decision Tree")
+
+"""
+desired_predict = []
+for val in pred_prob:
+    if(val < new_threshold):
+        desired_predict.append(0)
+    else:
+        desired_predict.append(1)
+
+print("############Ideal threshold results##############")
+print_stats_metrics(y_test.get(), desired_predict, pred_prob.get())
+"""
+
