@@ -14,5 +14,8 @@
 //Stratified sampling - crossvalidation - ujednačena podjela uzoraka
 //najoptimalniji - optimalno
 //špičasta krivulja - plotat distribuciju vjerojatnosti testnog dataseta - na toj distribuciji se postavlja threshold
-usporedi cuml i sklearn
+//usporedi cuml i sklearn
+Matthews Correlation Coefficient 
+Cohen’s Kappa Coefficient
 izvrtiti druge datasetove, usporediti rezultate
+Multiclass klasifikacija

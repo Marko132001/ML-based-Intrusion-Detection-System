@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import (f1_score, roc_curve, auc, precision_score, 
-                             recall_score, accuracy_score, confusion_matrix, roc_auc_score, precision_recall_curve)
+                             recall_score, accuracy_score, confusion_matrix, roc_auc_score, precision_recall_curve,
+                             matthews_corrcoef)
 from sklearn.model_selection import StratifiedKFold, KFold
 from cuml.preprocessing import LabelEncoder, StandardScaler
 from cuml.model_selection import train_test_split
@@ -127,7 +128,7 @@ def KFoldCompareMetrics(algName):
 def KFoldCompareAlgorithms():
 
     stratKFold = input("Run stratisfied KFold?\nY/N: ")
-    metric = int(input("Select metric:\n1-Accuracy\n2-Precision\n3-Recall\n4-F1 score\n5-ROC-AUC score\n6-Geometric mean\nEnter number: "))
+    metric = int(input("Select metric:\n1-Accuracy\n2-Precision\n3-Recall\n4-F1 score\n5-ROC-AUC score\n6-Geometric mean\n7-MCC\nEnter number: "))
 
     naive_bayes = []
     random_forest = []
@@ -224,11 +225,24 @@ def KFoldCompareAlgorithms():
                 g_mean = np.sqrt(tp_rate*tn_rate)
                 decision_tree.append(g_mean)
                 metricStr = "Geometric mean"
-        
+            case 7:
+                naive_bayes.append(matthews_corrcoef(y_true=y_test, y_pred=predictNB))
+                random_forest.append(matthews_corrcoef(y_true=y_test, y_pred=predictRF))
+                knn.append(matthews_corrcoef(y_true=y_test, y_pred=predictKNN))
+                decision_tree.append(matthews_corrcoef(y_true=y_test, y_pred=predictDT))
+                metricStr = "MCC"
+
+    if(metric == 7):
+        y_low = -1
+        y_high = 1
+    else:
+        y_low = 0
+        y_high = 1
+
     plt.figure()
     box_plot_data=[naive_bayes, random_forest, knn, decision_tree]
     plt.boxplot(box_plot_data,patch_artist=True,labels=['Naive Bayes', 'Random Forest', 'KNN', 'Decision Tree'])
-    plt.ylim(0, 1)
+    plt.ylim(y_low, y_high)
     plt.ylabel(metricStr)
     plt.xlabel("Klasifikatori")
     plt.show()
@@ -251,7 +265,9 @@ if(algorithm == 1):
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Naive Bayes#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-    KFoldCompareMetrics("Naive Bayes")
+    kfold = input("Run KFold?\nY/N: ")
+    if(kfold == 'Y'):
+        KFoldCompareMetrics("Naive Bayes")
 elif(algorithm == 2):
     #######################Random Forest#######################
     clf = RandomForestClassifier()
@@ -260,7 +276,9 @@ elif(algorithm == 2):
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Random Forest#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-    KFoldCompareMetrics("Random Forest")
+    kfold = input("Run KFold?\nY/N: ")
+    if(kfold == 'Y'):
+        KFoldCompareMetrics("Random Forest")
 elif(algorithm == 3):
     ####################### KNN #######################
     clf = KNeighborsClassifier()
@@ -269,7 +287,9 @@ elif(algorithm == 3):
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("####################### KNN #######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-    KFoldCompareMetrics("KNN")
+    kfold = input("Run KFold?\nY/N: ")
+    if(kfold == 'Y'):
+        KFoldCompareMetrics("KNN")
 elif(algorithm == 4):
     #######################Decision Tree#######################
     clf = RandomForestClassifier(n_estimators=1)
@@ -278,8 +298,11 @@ elif(algorithm == 4):
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Decision Tree#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
-    KFoldCompareMetrics("Decision Tree")
+    kfold = input("Run KFold?\nY/N: ")
+    if(kfold == 'Y'):
+        KFoldCompareMetrics("Decision Tree")
 
+KFoldCompareAlgorithms()
 """
 desired_predict = []
 for val in pred_prob:
