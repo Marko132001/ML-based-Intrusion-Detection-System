@@ -15,7 +15,8 @@
 //najoptimalniji - optimalno
 //špičasta krivulja - plotat distribuciju vjerojatnosti testnog dataseta - na toj distribuciji se postavlja threshold
 //usporedi cuml i sklearn
-Matthews Correlation Coefficient 
-Cohen’s Kappa Coefficient
-izvrtiti druge datasetove, usporediti rezultate
-Multiclass klasifikacija
+//Matthews Correlation Coefficient
+//opiši korištene algoritme za strojno učenje
+//napravi distribuciju vjerojatnosti za ostale algoritme i opiši rezultate za optimalni threshold
+izvrtiti druge datasetove, usporediti rezultate (1 V1 dataset i 2 V2 dataseta)
+Cohen’s Kappa Coefficient - mora biti ujednačen dataset

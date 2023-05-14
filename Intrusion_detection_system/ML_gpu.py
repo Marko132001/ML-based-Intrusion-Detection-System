@@ -49,7 +49,7 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
     print('AUC score: %.3f' % roc_auc_score(y_test, y_pred_prob))
 
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
-    """
+
     plt.figure()
     plt.title('Receiver Operating Characteristic')
     plt.plot(fpr, tpr, 'b', label = 'AUC = %0.3f' % auc(fpr, tpr))
@@ -58,7 +58,7 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
     plt.show()
-    """
+
     gmeans_improved = np.sqrt(tpr * (1 - fpr))
     index = np.argmax(gmeans_improved)
     print('Best Threshold=%f, G-Mean=%.3f' % (thresholds[index], gmeans_improved[index]))
@@ -74,12 +74,13 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
 
 
 
-def KFoldCompareMetrics(algName):
+def KFoldCompareMetrics(algName, customThresh=0.5):
 
     accuracy = []
     precision = []
     recall = []
     f1_measure = []
+    geometric_mean = []
 
     stratKFold = input("Run stratisfied KFold?\nY/N: ")
 
@@ -105,20 +106,35 @@ def KFoldCompareMetrics(algName):
         elif(algName == "Random Forest"):
             clf = RandomForestClassifier()
         elif(algName == "Decision Tree"):
-            clf = RandomForestClassifier(n_estimators=1)
+            clf = RandomForestClassifier(n_estimators=1, bootstrap=False)
 
         clf.fit(X_train,y_train)
-        #predict_prob = clf.predict_proba(X_test)[:, 1].get()
-        predict = clf.predict(X_test).get()
+
+        if(customThresh == 0.5):
+            #predict_prob = clf.predict_proba(X_test)[:, 1].get()
+            predict = clf.predict(X_test).get()
+        else:
+            pred_prob = clf.predict_proba(X_test)[:, 1].get()
+            predict = []
+            for val in pred_prob:
+                if(val < new_threshold):
+                    predict.append(0)
+                else:
+                    predict.append(1)
 
         accuracy.append(accuracy_score(y_test, predict))
         precision.append(precision_score(y_true=y_test, y_pred=predict, average='binary'))
         recall.append(recall_score(y_true=y_test, y_pred=predict))
         f1_measure.append(f1_score(y_true=y_test, y_pred=predict))
+        tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=predict).ravel()
+        tp_rate = tp/(tp+fn)
+        tn_rate = tn/(tn+fp) 
+        g_mean = np.sqrt(tp_rate*tn_rate)
+        geometric_mean.append(g_mean)
 
     plt.figure()
-    box_plot_data=[accuracy, precision, recall, f1_measure]
-    plt.boxplot(box_plot_data,patch_artist=True,labels=['Accuracy', 'Precision', 'Recall', 'F1 Measure'])
+    box_plot_data=[accuracy, precision, recall, f1_measure, geometric_mean]
+    plt.boxplot(box_plot_data,patch_artist=True,labels=['Accuracy', 'Precision', 'Recall', 'F1 Measure', 'G-Mean'])
     plt.ylim(0, 1)
     plt.ylabel(algName)
     plt.xlabel("Klasifikacijske metrike")
@@ -151,7 +167,7 @@ def KFoldCompareAlgorithms():
         clfNB = GaussianNB()
         clfRF = RandomForestClassifier()
         clfKNN = KNeighborsClassifier()
-        clfDT = RandomForestClassifier(n_estimators=1)
+        clfDT = RandomForestClassifier(n_estimators=1, bootstrap=False)
         
         clfNB.fit(X_train,y_train)
         predictNB_prob = clfNB.predict_proba(X_test)[:, 1].get()
@@ -267,7 +283,11 @@ if(algorithm == 1):
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
     kfold = input("Run KFold?\nY/N: ")
     if(kfold == 'Y'):
-        KFoldCompareMetrics("Naive Bayes")
+        optimalThresh = input("Run on optimal threshold?\nY/N: ")
+        if(optimalThresh == 'N'):
+            KFoldCompareMetrics("Naive Bayes")
+        else:
+            KFoldCompareMetrics("Naive Bayes", new_threshold)
 elif(algorithm == 2):
     #######################Random Forest#######################
     clf = RandomForestClassifier()
@@ -278,7 +298,11 @@ elif(algorithm == 2):
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
     kfold = input("Run KFold?\nY/N: ")
     if(kfold == 'Y'):
-        KFoldCompareMetrics("Random Forest")
+        optimalThresh = input("Run on optimal threshold?\nY/N: ")
+        if(optimalThresh == 'N'):
+            KFoldCompareMetrics("Random Forest")
+        else:
+            KFoldCompareMetrics("Random Forest", new_threshold)
 elif(algorithm == 3):
     ####################### KNN #######################
     clf = KNeighborsClassifier()
@@ -289,10 +313,14 @@ elif(algorithm == 3):
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
     kfold = input("Run KFold?\nY/N: ")
     if(kfold == 'Y'):
-        KFoldCompareMetrics("KNN")
+        optimalThresh = input("Run on optimal threshold?\nY/N: ")
+        if(optimalThresh == 'N'):
+            KFoldCompareMetrics("KNN")
+        else:
+            KFoldCompareMetrics("KNN", new_threshold)
 elif(algorithm == 4):
     #######################Decision Tree#######################
-    clf = RandomForestClassifier(n_estimators=1)
+    clf = RandomForestClassifier(n_estimators=1, bootstrap=False)
     clf.fit(x_train,y_train)
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
@@ -300,9 +328,17 @@ elif(algorithm == 4):
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
     kfold = input("Run KFold?\nY/N: ")
     if(kfold == 'Y'):
-        KFoldCompareMetrics("Decision Tree")
+        optimalThresh = input("Run on optimal threshold?\nY/N: ")
+        if(optimalThresh == 'N'):
+            KFoldCompareMetrics("Decision Tree")
+        else:
+            KFoldCompareMetrics("Decision Tree", new_threshold)
 
-KFoldCompareAlgorithms()
+kfold_alg = input("Run KFold on all algorithms?\nY/N: ")
+
+if(kfold_alg == 'Y'):
+    KFoldCompareAlgorithms()
+    
 """
 desired_predict = []
 for val in pred_prob:
@@ -314,4 +350,3 @@ for val in pred_prob:
 print("############Ideal threshold results##############")
 print_stats_metrics(y_test.get(), desired_predict, pred_prob.get())
 """
-
