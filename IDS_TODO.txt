@@ -20,3 +20,8 @@
 //napravi distribuciju vjerojatnosti za ostale algoritme i opiši rezultate za optimalni threshold
 izvrtiti druge datasetove, usporediti rezultate (1 V1 dataset i 2 V2 dataseta)
 Cohen’s Kappa Coefficient - mora biti ujednačen dataset
+Optimal Thresholds (G-Mean):
+RF - 0.17
+KNN - 0.11
+DT - 0.06
+NB - 0.00

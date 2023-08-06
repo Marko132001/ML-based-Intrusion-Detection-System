@@ -1,14 +1,16 @@
 from warnings import simplefilter
 
+import shap
 import cudf
 import cuml
 import cupy
+from cuml.explainer import KernelExplainer, TreeExplainer
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import (f1_score, roc_curve, auc, precision_score, 
                              recall_score, accuracy_score, confusion_matrix, roc_auc_score, precision_recall_curve,
-                             matthews_corrcoef)
+                             matthews_corrcoef, cohen_kappa_score)
 from sklearn.model_selection import StratifiedKFold, KFold
 from cuml.preprocessing import LabelEncoder, StandardScaler
 from cuml.model_selection import train_test_split
@@ -22,9 +24,28 @@ np.set_printoptions(threshold=np.inf)
 
 cuml.set_global_output_type('cupy')
 
+dataset_input = int(input("Choose dataset:\n1-NF-BoT-IoT\n2-NF-ToN-IoT\n3-NF-UNSW-NB15\n4-NF-ToN-IoT-v2\n5-NF-UNSW-NB15-v2\n"))
 
-df = cudf.read_csv('./datasets/NF-BoT-IoT.csv', header=0, dtype=cupy.float32, usecols=range(4, 12))
-dt = cudf.read_csv('./datasets/NF-BoT-IoT.csv', header=0, dtype=cupy.int32, usecols=[12])
+knn_optimal_value = 5
+dataset_name = ""
+
+match dataset_input:
+    case 1:
+        dataset_name = "NF-BoT-IoT"
+        knn_optimal_value = 5
+    case 2:
+        dataset_name = "NF-ToN-IoT"
+        knn_optimal_value = 17
+    case 3:
+        dataset_name = "NF-UNSW-NB15"
+        knn_optimal_value = 9
+    case 4:
+        dataset_name = "NF-ToN-IoT-v2"
+    case 5:
+        dataset_name = "NF-UNSW-NB15-v2"
+
+df = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.float32, usecols=range(4, 12))
+dt = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.int32, usecols=[12])
 
 feature_std = StandardScaler().fit_transform(df)
 labels = LabelEncoder().fit_transform(dt.values)
@@ -47,7 +68,8 @@ def print_stats_metrics(y_test, y_pred, y_pred_prob):
     print('F1-measure: %.3f' % f1_score(y_true=y_test, y_pred=y_pred))
     print('Geometric mean: %.3f' % g_mean)
     print('AUC score: %.3f' % roc_auc_score(y_test, y_pred_prob))
-
+    print('Cohens kappa: %.3f' % cohen_kappa_score(y_test, y_pred))
+    print('Matthews Corr. Coef.: %.3f' % matthews_corrcoef(y_test, y_pred))
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
 
     plt.figure()
@@ -98,11 +120,10 @@ def KFoldCompareMetrics(algName, customThresh=0.5):
         y_test = labels[test_index]
         y_test = y_test.values.get()
 
-
         if(algName == "Naive Bayes"):
             clf = GaussianNB()
         elif(algName == "KNN"):
-            clf = KNeighborsClassifier()
+            clf = KNeighborsClassifier(n_neighbors=knn_optimal_value)
         elif(algName == "Random Forest"):
             clf = RandomForestClassifier()
         elif(algName == "Decision Tree"):
@@ -133,8 +154,8 @@ def KFoldCompareMetrics(algName, customThresh=0.5):
         geometric_mean.append(g_mean)
 
     plt.figure()
-    box_plot_data=[accuracy, precision, recall, f1_measure, geometric_mean]
-    plt.boxplot(box_plot_data,patch_artist=True,labels=['Accuracy', 'Precision', 'Recall', 'F1 Measure', 'G-Mean'])
+    box_plot_data=[accuracy, precision, recall, f1_measure]
+    plt.boxplot(box_plot_data,patch_artist=True,labels=['Accuracy', 'Precision', 'Recall', 'F1 Measure'])
     plt.ylim(0, 1)
     plt.ylabel(algName)
     plt.xlabel("Klasifikacijske metrike")
@@ -166,7 +187,7 @@ def KFoldCompareAlgorithms():
 
         clfNB = GaussianNB()
         clfRF = RandomForestClassifier()
-        clfKNN = KNeighborsClassifier()
+        clfKNN = KNeighborsClassifier(n_neighbors=knn_optimal_value)
         clfDT = RandomForestClassifier(n_estimators=1, bootstrap=False)
         
         clfNB.fit(X_train,y_train)
@@ -264,8 +285,20 @@ def KFoldCompareAlgorithms():
     plt.show()
 
 
-
-
+def plot_optimal_k_value():
+    error_rate = []
+    for i in range(1, 31, 2):
+        clf = KNeighborsClassifier(n_neighbors=i)
+        clf.fit(x_train, y_train)
+        predictions = clf.predict(x_test)
+        error_rate.append(np.mean(predictions.get() != y_test.get()))
+    plt.figure(figsize=(10,6))
+    plt.plot(range(1,31, 2),error_rate,color='blue', linestyle='dashed', marker='o',
+    markerfacecolor='red', markersize=10)
+    plt.title('Error Rate vs. K Value')
+    plt.xlabel('K')
+    plt.ylabel('Error Rate')
+    plt.show()
 
 
 
@@ -305,7 +338,10 @@ elif(algorithm == 2):
             KFoldCompareMetrics("Random Forest", new_threshold)
 elif(algorithm == 3):
     ####################### KNN #######################
-    clf = KNeighborsClassifier()
+    #optimal_k = input("Plot optimal K value?\nY/N: ")
+    #if(optimal_k == 'Y'):
+    #   plot_optimal_k_value()
+    clf = KNeighborsClassifier(n_neighbors=knn_optimal_value)
     clf.fit(x_train, y_train)
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
@@ -322,6 +358,9 @@ elif(algorithm == 4):
     #######################Decision Tree#######################
     clf = RandomForestClassifier(n_estimators=1, bootstrap=False)
     clf.fit(x_train,y_train)
+    #cu_explainer = TreeExplainer(model=clf)
+    #cu_shap_values = cu_explainer.shap_values(x_test)
+    #shap.summary_plot(cu_shap_values.get(), x_test, feature_names=["PROTOCOL","L7_PROTO","IN_BYTES","OUT_BYTES","IN_PKTS","OUT_PKTS","TCP_FLAGS","FLOW_DURATION_MILLISECONDS"])
     predictions = clf.predict(x_test)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Decision Tree#######################")
@@ -333,7 +372,7 @@ elif(algorithm == 4):
             KFoldCompareMetrics("Decision Tree")
         else:
             KFoldCompareMetrics("Decision Tree", new_threshold)
-
+    
 kfold_alg = input("Run KFold on all algorithms?\nY/N: ")
 
 if(kfold_alg == 'Y'):
