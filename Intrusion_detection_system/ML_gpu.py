@@ -1,5 +1,7 @@
 from warnings import simplefilter
 
+import pickle
+import time
 import shap
 import cudf
 import cuml
@@ -43,9 +45,23 @@ match dataset_input:
         dataset_name = "NF-ToN-IoT-v2"
     case 5:
         dataset_name = "NF-UNSW-NB15-v2"
+        knn_optimal_value = 3
 
-df = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.float32, usecols=range(4, 12))
-dt = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.int32, usecols=[12])
+if(dataset_input <= 3):
+    df = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.float32, usecols=range(4, 12))
+    dt = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.int32, usecols=[12])
+elif(dataset_input == 6):
+    df = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.float32, usecols=range(0, 83))
+    dt = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.int32, usecols=[83])
+else:
+    features = []
+    nums = [16,17,41]
+    for i in range(4, 43):
+        if(i not in nums):
+            features.append(i)
+    df = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.float32, usecols=features)
+    dt = cudf.read_csv(f"./datasets/{dataset_name}.csv", header=0, dtype=cupy.int32, usecols=[43])
+
 
 feature_std = StandardScaler().fit_transform(df)
 labels = LabelEncoder().fit_transform(dt.values)
@@ -310,7 +326,10 @@ if(algorithm == 1):
     #######################Naive Bayes#######################
     clf = GaussianNB()
     clf.fit(x_train,y_train)
+    start = time.time()
     predictions = clf.predict(x_test)
+    end = time.time()
+    print(end - start)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Naive Bayes#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
@@ -325,7 +344,10 @@ elif(algorithm == 2):
     #######################Random Forest#######################
     clf = RandomForestClassifier()
     clf.fit(x_train,y_train)
+    start = time.time()
     predictions = clf.predict(x_test)
+    end = time.time()
+    print(end - start)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Random Forest#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
@@ -343,7 +365,10 @@ elif(algorithm == 3):
     #   plot_optimal_k_value()
     clf = KNeighborsClassifier(n_neighbors=knn_optimal_value)
     clf.fit(x_train, y_train)
+    start = time.time()
     predictions = clf.predict(x_test)
+    end = time.time()
+    print(end - start)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("####################### KNN #######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
@@ -358,10 +383,13 @@ elif(algorithm == 4):
     #######################Decision Tree#######################
     clf = RandomForestClassifier(n_estimators=1, bootstrap=False)
     clf.fit(x_train,y_train)
-    #cu_explainer = TreeExplainer(model=clf)
-    #cu_shap_values = cu_explainer.shap_values(x_test)
-    #shap.summary_plot(cu_shap_values.get(), x_test, feature_names=["PROTOCOL","L7_PROTO","IN_BYTES","OUT_BYTES","IN_PKTS","OUT_PKTS","TCP_FLAGS","FLOW_DURATION_MILLISECONDS"])
+    saveModel = input("Save model?\nY/N: ")
+    if(saveModel == 'Y'):
+        pickle.dump(clf, open('decTreeModel.pkl', 'wb'))
+    start = time.time()
     predictions = clf.predict(x_test)
+    end = time.time()
+    print(end - start)
     pred_prob = clf.predict_proba(x_test)[:, 1]
     print("#######################Decision Tree#######################")
     new_threshold = print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
@@ -377,15 +405,12 @@ kfold_alg = input("Run KFold on all algorithms?\nY/N: ")
 
 if(kfold_alg == 'Y'):
     KFoldCompareAlgorithms()
-    
-"""
-desired_predict = []
-for val in pred_prob:
-    if(val < new_threshold):
-        desired_predict.append(0)
-    else:
-        desired_predict.append(1)
 
-print("############Ideal threshold results##############")
-print_stats_metrics(y_test.get(), desired_predict, pred_prob.get())
-"""
+testModel = input("Test saved model?\nY/N: ")
+
+if(testModel == 'Y'):
+    savedClf = pickle.load(open('decTreeModel.pkl', 'rb'))
+    predictions = savedClf.predict(x_test)
+    pred_prob = savedClf.predict_proba(x_test)[:, 1]
+    print_stats_metrics(y_test.get(), predictions.get(), pred_prob.get())
+
